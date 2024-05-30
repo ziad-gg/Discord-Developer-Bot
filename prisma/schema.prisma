@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+type Account {
+  id       String
+  username String
+  token    String
+  // bots     String[]
+}
+
+model credentials {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  username String    @unique
+  password String
+  accounts Account[]
+}
+
+model bot {
+  id       String @id @map("_id")
+  username String
+  token    String
+}
