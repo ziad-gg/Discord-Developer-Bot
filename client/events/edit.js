@@ -16,17 +16,19 @@ async function Execution(interaction) {
     if (!interaction.customId.startsWith('edit')) return;
 
     const [undefined, credentialId, accountId, botId] = interaction.customId.split('-');
-    // const currentUserSession = session.getUserCredentials(interaction.user.id);
-    // if (currentUserSession != credentialId) return interaction.editReply({ content: '❌ You are not logged in.', ephemeral: true });
+    const currentUserSession = session.getUserCredentials(interaction.user.id);
+    if (currentUserSession != credentialId) return interaction.reply({ content: '❌ You are not logged in.', ephemeral: true });
 
     const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
-    if (!credentials) return interaction.editReply(`> ❌ Credentials was deleted`);
+    if (!credentials) return interaction.reply({ content: `> ❌ Credentials was deleted`, ephemeral: true });
 
     const account = credentials.accounts.find(acc => acc.id == accountId);
-    if (!account) return interaction.editReply(`> ❌ Account wasn't found`);
+    if (!account) return interaction.reply({ content: `> ❌ Account wasn't found`, ephemeral: true });
 
-    // const bot = await manager.getBotById(botId, account.token);
-    // if (!bot) return interaction.editReply(`> ❌ Bot wasn't found`);
+    const bot = await manager.getBotById(botId, account.token);
+    if (!bot) return interaction.reply({ content: `> ❌ Bot wasn't found`, ephemeral: true });
+
+    return interaction.reply({content: `This feature is currently in development mode. We appreciate your patience and understanding as we work to bring you the best experience possible. Thank you for your support.`, ephemeral: true });
 
     if (interaction.customId.endsWith('username')) {
         const UsernameDislog = await utils.Dialog(interaction, 'Username');

@@ -96,10 +96,10 @@ async function Execution(interaction) {
         const key2 = `edit-${credentialId}-${accountId}-${botId}-`
 
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('username')).setLabel('🪪 username').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('description')).setLabel('📜 description').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('avatar')).setLabel('🎨 Avatar').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('banner')).setLabel('🖼️ banner').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(false).setCustomId(key2.concat('username')).setLabel('🪪 username').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(false).setCustomId(key2.concat('description')).setLabel('📜 description').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(false).setCustomId(key2.concat('avatar')).setLabel('🎨 Avatar').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(false).setCustomId(key2.concat('banner')).setLabel('🖼️ banner').setStyle(ButtonStyle.Primary),
         );
 
         interaction.editReply({ embeds: [Embed], components: [row2, row] });
