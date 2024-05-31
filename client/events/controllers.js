@@ -72,7 +72,7 @@ async function Execution(interaction) {
 
         let avatar = `https://cdn.discordapp.com/app-icons/${bot.bot.id}/${bot.bot.avatar}.png?size=512`
         avatar = await axios.get(avatar).catch(err => null) ? avatar : `https://ui-avatars.com/api/?background=494d54&uppercase=false&color=dbdcdd&size=128&font-size=0.33&name=${bot.bot.username}`;
-        
+
         const key = `mod-${credentialId}-${accountId}-${botId}`;
 
         const Embed = new EmbedBuilder()
@@ -81,10 +81,10 @@ async function Execution(interaction) {
             .setURL(`https://discord.com/developers/applications/${bot.bot.id}`)
             .setImage(encodeURI(avatar))
             .setTimestamp();
-    
+
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(key.concat('-token')).setLabel('🎟️ Token').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(key.concat('-delete')).setLabel('🗑️ delete').setStyle(ButtonStyle.Danger).setDisabled(true),
+            new ButtonBuilder().setCustomId('delete'.concat('-', key)).setLabel('🗑️ delete').setStyle(ButtonStyle.Danger),
         );
 
         interaction.editReply({ embeds: [Embed], components: [row] });

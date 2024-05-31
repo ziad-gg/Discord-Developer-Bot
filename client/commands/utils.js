@@ -17,7 +17,7 @@ function Execution(message) {
         .setDescription(`🕒 **Uptime:** ${uptimeString}`)
         .setTimestamp();
 
-    message.reply({ embeds: [embed] });
+    message.replyNoMention({ embeds: [embed] });
 }
 
 function PingExecution(message) {
@@ -27,7 +27,7 @@ function PingExecution(message) {
         .setDescription(`🏓 Pong! Latency is ${Date.now() - message.createdTimestamp}ms.`)
         .setTimestamp();
 
-    message.reply({ embeds: [embed] });
+    message.replyNoMention({ embeds: [embed] });
 }
 
 /**

@@ -12,7 +12,7 @@ new Application(client, {
 
 require('module-alias')();
 require('dotenv').config();
-
+require('@/src/Monitor.js');
 client.Application.build();
 
 client.login(process.env.BOT_TOKEN);

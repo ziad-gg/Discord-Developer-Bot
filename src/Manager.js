@@ -1,3 +1,4 @@
+const { bot } = require('@/prisma');
 const { default: axios } = require('axios');
 
 class Manager {
@@ -73,6 +74,44 @@ class Manager {
         // 60008 invalid password
         if (response.response) return null;
         return response.data;
+    };
+
+    /**
+     * @param {string} botId  
+     * @param {string} token 
+     * @returns {Promise<DiscordBot>}
+     */
+    static async getBotById(botId, token) {
+        const response = await axios.get(`https://discord.com/api/v9/applications/${botId}`, {
+            headers: {
+                Authorization: `${token}`
+            }
+        }).catch(e => null);
+
+        if (!response) return null;
+        return response.data;
+    };
+
+    /**
+     * 
+     * @param {string} botId 
+     * @param {string} token 
+     * @param {string} mfa 
+     * @returns {Promise<{ type: 'verfication' | 'done', token: string | undefined }>}
+     */
+    static async deleteBotById(botId, token, mfa) {
+        const response = await axios.post(`https://discord.com/api/v9/applications/${botId}/delete`, undefined, {
+            headers: {
+                Authorization: `${token}`,
+                'X-Discord-Mfa-Authorization': mfa
+            }
+        }).catch(e => e.response);
+
+        if (response.data.code == 60003) {
+            return { type: 'verfication', token: response.data.mfa.ticket }
+        } else {
+            return { type: 'done' }
+        }
     }
 };
 

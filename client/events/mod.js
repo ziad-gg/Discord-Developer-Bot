@@ -1,9 +1,11 @@
-const { Events, MessageComponentInteraction, codeBlock, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextInputStyle, TextInputBuilder, ModalBuilder } = require('discord.js');
+const { Events, MessageComponentInteraction, codeBlock, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { EventBuilder, CommandBuilder } = require('handler.djs');
 
 const database = require('@database');
 const manager = require('@/src/Manager.js');
 const session = require('@/src/Sessions.js');
+const utils = require('@/src/Utils.js');
+const { EmbedBuilder } = require('discord.js');
 
 EventBuilder.$N`${Events.InteractionCreate}`.$E(Execution).$L();
 
@@ -19,7 +21,7 @@ async function Execution(interaction) {
     if (interaction.customId.endsWith('token')) {
         const [undefined, credentialId, accountId, botId] = interaction.customId.split('-');
         const currentUserSession = session.getUserCredentials(interaction.user.id);
-        if (currentUserSession != credentialId) return interaction.editReply('❌ You are not logged in.');
+        if (currentUserSession != credentialId) return interaction.editReply({ content: '❌ You are not logged in.', ephemeral: true });
 
         const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
         if (!credentials) return interaction.editReply(`> ❌ Credentials was deleted`);
@@ -37,12 +39,17 @@ async function Execution(interaction) {
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`verify-${credentialId}-${accountId}-${botId}`).setLabel('Verify').setStyle(ButtonStyle.Primary)
-        )
+        );
 
         if (BotAccount) {
             const isValid = await manager.CheckToken(BotAccount.token, true);
             if (!isValid) return interaction.editReply({ components: [row] });
-            interaction.editReply(codeBlock(BotAccount.token));
+
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId(`refresh-${credentialId}-${accountId}-${botId}`).setLabel('Refresh Token').setStyle(ButtonStyle.Danger)
+            );
+
+            interaction.editReply({ content: codeBlock(BotAccount.token), components: [row2] });
         } else {
             interaction.editReply({ components: [row] });
         };
@@ -50,74 +57,132 @@ async function Execution(interaction) {
     }
 }
 
-CommandBuilder.$N`verify`.$B((interaction) => {
+CommandBuilder.$N`verify`.$B(async (interaction) => {
     const [undefined, credentialId, accountId, botId] = interaction.customId.split('-');
 
     const currentUserSession = session.getUserCredentials(interaction.user.id);
-    if (currentUserSession != credentialId) return interaction.reply('❌ You are not logged in.');
+    if (currentUserSession != credentialId) return interaction.reply({ content: '❌ You are not logged in.', ephemeral: true });
 
-    const modal = new ModalBuilder()
-        .setCustomId(`verify-${credentialId}-${accountId}-${botId}`)
-        .setTitle('Multi-Factor Authentication');
+    const PasswordDialog = await utils.PasswordDialog(interaction);
+    const password = PasswordDialog.value;
+    if (PasswordDialog.type == 'error') return;
 
-    const passwordInput = new TextInputBuilder()
-        .setCustomId('password')
-        .setLabel("Discord Account Password")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
+    const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
+    if (!credentials) return interaction.followUp({ content: `> ❌ Credentials was deleted`, ephemeral: true });
 
-    const firstActionRow = new ActionRowBuilder().addComponents(passwordInput);
-    modal.addComponents(firstActionRow);
+    const account = credentials.accounts.find(acc => acc.id == accountId);
+    if (!account) return interaction.followUp({ content: `> ❌ Account wasn't found`, ephemeral: true });
 
-    interaction.showModal(modal);
+    const bot = await manager.getBotById(botId, account.token);
+    if (!bot) return interaction.followUp({ content: `> ❌ Bot wasn't found`, ephemeral: true });
 
-    const filter = (i) => i.customId === `verify-${credentialId}-${accountId}-${botId}`;
+    const mfa = await manager.ResetToken(botId, account.token);
+    if (mfa.type == 'done') return interaction.followUp({ content: '> ❌ Unhandled', ephemeral: true });
 
-    interaction.awaitModalSubmit({ filter, time: 60_000 }).then(async i => {
-        await i.deferUpdate({ ephemeral: true });
+    const verfication = await manager.verificaiton(account.token, password, mfa.token);
+    if (!verfication) return interaction.followUp({ content: '> ❌ Invalid Password.', ephemeral: true });
 
-        const password = i.fields.getTextInputValue('password');
+    const ResetToken = await manager.ResetToken(botId, account.token, verfication.token);
 
-        const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
-        if (!credentials) return i.editReply({ content: `> ❌ Credentials was deleted`, components: [] });
+    interaction.editReply({ content: codeBlock(ResetToken.token), components: [] });
 
-        const account = credentials.accounts.find(acc => acc.id == accountId);
-        if (!account) return i.editReply({ content: `> ❌ Account wasn't found`, components: [] });
+    const Bot = await database.bot.findFirst({ where: { id: bot.bot.id } });
 
-        const Applications = await manager.GetApplication(account.token);
-        if (!Applications) return i.editReply({ content: '> ❌ Something went wrong.', components: [] });
+    if (Bot) {
+        await database.bot.update({
+            where: { id: bot.bot.id },
+            data: { token: ResetToken.token }
+        });
+    } else {
+        await database.bot.create({
+            data: {
+                id: bot.bot.id,
+                token: ResetToken.token,
+                username: bot.bot.username
+            }
+        })
+    };
 
-        const bot = Applications.find(app => app.bot.id == botId);
-        if (!bot) return i.editReply({ content: `> ❌ Bot wasn't found`, components: [] });
+    // interaction.editReply({ content: '> ❌ Timed out.', components: [] });
+});
 
-        const mfa = await manager.ResetToken(botId, account.token);
-        if (mfa.type != 'verfication') return i.editReply({ content: '> ❌ Unhandled', components: [] });
+CommandBuilder.$N`delete`.$B(async (interaction) => {
+    const [, , credentialId, accountId, botId] = interaction.customId.split('-');
 
-        const verfication = await manager.verificaiton(account.token, password, mfa.token);
-        if (!verfication) return i.editReply({ content: '> ❌ Invalid Password.', components: [] });
+    const currentUserSession = session.getUserCredentials(interaction.user.id);
+    if (currentUserSession != credentialId) return interaction.reply({ content: '❌ You are not logged in.', ephemeral: true });
 
-        const ResetToken = await manager.ResetToken(botId, account.token, verfication.token);
-        interaction.editReply({ content: codeBlock(ResetToken.token), components: [] });
+    const PasswordDialog = await utils.PasswordDialog(interaction);
+    const password = PasswordDialog.value;
+    if (PasswordDialog.type == 'error') return;
 
-        const Bot = await database.bot.findFirst({ where: { id: bot.bot.id } });
+    const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
+    if (!credentials) return interaction.followUp({ content: `> ❌ Credentials was deleted`, ephemeral: true });
 
-        if (Bot) {
-            await database.bot.update({
-                where: { id: bot.bot.id },
-                data: { token: ResetToken.token }
-            });
-        } else {
-            await database.bot.create({
-                data: {
-                    id: bot.bot.id,
-                    token: ResetToken.token,
-                    username: bot.bot.username
-                }
-            })
-        };
+    const account = credentials.accounts.find(acc => acc.id == accountId);
+    if (!account) return interaction.followUp({ content: `> ❌ Account wasn't found`, ephemeral: true });
 
-    }).catch((e) => {
-        console.log(e);
-        interaction.editReply({ content: '> ❌ Timed out.', components: [] });
-    });
+    const bot = await manager.getBotById(botId, account.token);
+    if (!bot) return interaction.followUp({ content: `> ❌ Bot wasn't found`, ephemeral: true });
+
+    const mfa = await manager.deleteBotById(botId, account.token);
+    if (mfa.type == 'done') return interaction.followUp({ content: '> ❌ Unhandled', ephemeral: true });
+
+    const verfication = await manager.verificaiton(account.token, password, mfa.token);
+    if (!verfication) return interaction.followUp({ content: '> ❌ Invalid Password.', ephemeral: true });
+
+    const _delete = await manager.deleteBotById(botId, account.token, verfication.token);
+    if (_delete.type != 'done') return interaction.followUp({ content: '> ❌ Unhandled', ephemeral: true });
+
+    const Embed = new EmbedBuilder().setColor('Red').setTitle('🗑️ Bot deleted.')
+    interaction.editReply({ embeds: [Embed], components: [] });
+});
+
+CommandBuilder.$N`refresh`.$B(async (interaction) => {
+    const [undefined, credentialId, accountId, botId] = interaction.customId.split('-');
+
+    const currentUserSession = session.getUserCredentials(interaction.user.id);
+    if (currentUserSession != credentialId) return interaction.reply({ content: '❌ You are not logged in.', ephemeral: true });
+
+    const PasswordDialog = await utils.PasswordDialog(interaction);
+    const password = PasswordDialog.value;
+    if (PasswordDialog.type == 'error') return;
+
+    const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
+    if (!credentials) return interaction.followUp({ content: `> ❌ Credentials was deleted`, ephemeral: true });
+
+    const account = credentials.accounts.find(acc => acc.id == accountId);
+    if (!account) return interaction.followUp({ content: `> ❌ Account wasn't found`, ephemeral: true });
+
+    const bot = await manager.getBotById(botId, account.token);
+    if (!bot) return interaction.followUp({ content: `> ❌ Bot wasn't found`, ephemeral: true });
+
+    const mfa = await manager.ResetToken(botId, account.token);
+    if (mfa.type == 'done') return interaction.followUp({ content: '> ❌ Unhandled', ephemeral: true });
+
+    const verfication = await manager.verificaiton(account.token, password, mfa.token);
+    if (!verfication) return interaction.followUp({ content: '> ❌ Invalid Password.', ephemeral: true });
+
+    const ResetToken = await manager.ResetToken(botId, account.token, verfication.token);
+
+    interaction.editReply({ content: codeBlock(ResetToken.token) });
+
+    const Bot = await database.bot.findFirst({ where: { id: bot.bot.id } });
+
+    if (Bot) {
+        await database.bot.update({
+            where: { id: bot.bot.id },
+            data: { token: ResetToken.token }
+        });
+    } else {
+        await database.bot.create({
+            data: {
+                id: bot.bot.id,
+                token: ResetToken.token,
+                username: bot.bot.username
+            }
+        })
+    };
+
+    // interaction.editReply({ content: '> ❌ Timed out.', components: [] });
 });
