@@ -90,9 +90,19 @@ async function Execution(interaction) {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(key.concat('-token')).setLabel('🎟️ Token').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('delete'.concat('-', key)).setLabel('🗑️ delete').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setLabel('🔗 invite').setStyle(ButtonStyle.Link).setURL(`https://discord.com/oauth2/authorize?client_id=${bot.bot.id}&scope=identify+guilds+bot+applications.commands+applications.commands.permissions.update&permissions=2080374975`),
         );
 
-        interaction.editReply({ embeds: [Embed], components: [row] });
+        const key2 = `edit-${credentialId}-${accountId}-${botId}-`
+
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('username')).setLabel('🪪 username').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('description')).setLabel('📜 description').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('avatar')).setLabel('🎨 Avatar').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setDisabled(true).setCustomId(key2.concat('banner')).setLabel('🖼️ banner').setStyle(ButtonStyle.Primary),
+        );
+
+        interaction.editReply({ embeds: [Embed], components: [row2, row] });
     }
 };
 

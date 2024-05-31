@@ -68,7 +68,42 @@ module.exports.BotBuilderDialog = (interaction) => {
             resolve({ type: 'error' });
         });
     });
-}
+};
+
+/**
+ * @param {ChatInputCommandInteraction} interaction 
+ * @param {string} name
+ * @returns {Promise<{ type: 'done' | 'error', value: string }>}
+ */
+module.exports.Dialog = (interaction, name) => {
+    return new Promise(async (resolve) => {
+        const key = `custom-dialog-${interaction.user.id}`;
+
+        const modal = new ModalBuilder()
+            .setCustomId(key)
+            .setTitle('General Information');
+
+        const Input = new TextInputBuilder()
+            .setCustomId(name)
+            .setLabel(`${name} input`)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const firstActionRow = new ActionRowBuilder().addComponents(Input);
+        modal.addComponents(firstActionRow);
+
+        await interaction.showModal(modal);
+        const filter = (i) => i.customId === key;
+
+        interaction.awaitModalSubmit({ filter, time: 60_000 }).then(async i => {
+            await i.deferUpdate({ ephemeral: true });
+            const input = i.fields.getTextInputValue(name);
+            resolve({ type: 'done', value: input });
+        }).catch(() => {
+            resolve({ type: 'error' });
+        });
+    })
+};
 
 module.exports.Validate = async (interaction) => { };
 
