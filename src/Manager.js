@@ -1,6 +1,8 @@
 const { bot } = require('@/prisma');
 const { default: axios } = require('axios');
 
+const { getRandomAvatar } = require('./Utils');
+
 class Manager {
     /**
      * @param {string} token 
@@ -112,7 +114,84 @@ class Manager {
         } else {
             return { type: 'done' }
         }
+    };
+
+    /**
+     * 
+     * @param {string} url 
+     * @param {string} auth 
+     * @param {{}} body 
+     * @param {{}} moreHeaders 
+     * @returns {Promise<import('axios').AxiosResponse>}
+     */
+    static async post(url, auth, body = {}, moreHeaders = {}) {
+        return await axios.post(url, body, {
+            headers: auth ? {
+                'Authorization': auth,
+                ...moreHeaders
+            } : null
+        }).catch(e => e.response)
+    };
+
+    /**
+     * @param {string} name 
+     * @param {string} token 
+     * @returns {Promise<DiscordBot>}
+     */
+    static async CreateBot(name, token) {
+        const icon = await getRandomAvatar();
+
+        const payload = {
+            url: 'https://discord.com/api/applications',
+            method: 'post',
+            dats: {
+                name,
+                flags: 565248,
+                public_bot: true,
+                bot_require_code_grant: false,
+                icon: icon
+            },
+            headers: {
+                Authorization: `${token}`
+            },
+        };
+
+        const response = await axios(payload).catch(e => e.response);
+
+        console.log(response.data.responses[0]);
+
+        return response.data;
+    };
+
+    static async EditBot(id, token) {
+        const icon = await getRandomAvatar();
+
+        const response = await axios.patch(`https://discord.com/api/v9/applications/${id}`, {
+            flags: 565248,
+            public_bot: true,
+            bot_require_code_grant: false,
+            icon: icon
+        }, {
+            headers: {
+                Authorization: `${token}`
+            }
+        }).catch(e => null);
+
+        if (!response) return null;
+        return response.data;
+    };
+
+    static async ReportBotCreated(botid, token) {
+        const response = await axios.post(`https://discord.com/api/v9/users/@me/applications/${botid}/entitlements`, {
+            headers: {
+                Authorization: `${token}`
+            }
+        }).catch(e => null);
+
+        if (!response) return null;
+        return response.data;
     }
+
 };
 
 module.exports = Manager;

@@ -1,10 +1,11 @@
 const { Events, AnySelectMenuInteraction, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { EventBuilder } = require('handler.djs');
+const { EventBuilder, CommandBuilder } = require('handler.djs');
 const { default: axios } = require('axios');
 
 const database = require('@database');
 const manager = require('@/src/Manager.js');
 const session = require('@/src/Sessions.js');
+const utils = require('@/src/Utils.js')
 
 EventBuilder.$N`${Events.InteractionCreate}`.$E(Execution).$L();
 
@@ -47,10 +48,14 @@ async function Execution(interaction) {
             );
         };
 
+        const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`create-${credentialId}-${accoutnId}`).setLabel('Create Bot 🤖').setStyle(ButtonStyle.Primary).setDisabled(true)
+        );
+
         const row = new ActionRowBuilder().addComponents(menu);
         const embed = new EmbedBuilder().setColor('Red').setTitle(`Found ${Applications.length} application`);
 
-        interaction.editReply({ embeds: [embed], components: [row] });
+        interaction.editReply({ embeds: [embed], components: [row, row1] });
     }
 
     if (interaction.customId.includes('bots')) {
@@ -90,3 +95,31 @@ async function Execution(interaction) {
         interaction.editReply({ embeds: [Embed], components: [row] });
     }
 };
+
+CommandBuilder.$N`create`.$B(async (interaction) => {
+    const [, credentialId, accountId] = interaction.customId.split('-');
+
+    const currentUserSession = session.getUserCredentials(interaction.user.id);
+    if (currentUserSession != credentialId) return interaction.reply({ content: '❌ You are not logged in.', ephemeral: true });
+
+    const credentials = await database.credentials.findFirst({ where: { id: credentialId } });
+    if (!credentials) return interaction.reply({ content: `> ❌ Credentials was deleted`, ephemeral: true });
+
+    const account = credentials.accounts.find(acc => acc.id == accountId);
+    if (!account) return interaction.reply({ content: `> ❌ Account wasn't found`, ephemeral: true });
+
+    const BotBuilderDialog = await utils.BotBuilderDialog(interaction);
+    const username = BotBuilderDialog.value;
+
+    if (BotBuilderDialog.type == 'error') return;
+
+    const Creation = await manager.CreateBot(username, account.token);
+    // if (!Creation) return interaction.followUp({ content: `> ❌ Something went wrong`, ephemeral: true });
+
+    // await manager.ReportBotCreated(Creation.bot.id, account.token);
+
+    // console.log(Creation);
+    // const Modification = await manager.EditBot(Creation.id, account.token);
+    // console.log(Modification);
+
+});
