@@ -22,7 +22,8 @@ class Sessions {
             return null;
         }
 
-        if ((Date.now() > session.at) && this.Sessions.delete(userId)) {
+        if (Date.now() > session.at) {
+            this.Sessions.delete(userId);
             return null;
         }
 

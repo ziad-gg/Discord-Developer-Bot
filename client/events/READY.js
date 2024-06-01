@@ -10,5 +10,6 @@ EventBuilder.$N`${Events.ClientReady}`.$E(Execution).$O().$L();
  */
 async function Execution(client) {
     const count = await database.credentials.count();
-    console.log(`Client Is Ready (${client.user.username}) [credentials: ${count}]`);
+
+    console.log(`Client Is Ready (${client.user.username}) [credentials: ${count}] [prefix: ${client.Application.prefix}]`);
 };
