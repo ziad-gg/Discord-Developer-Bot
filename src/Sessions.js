@@ -8,7 +8,7 @@ class Sessions {
      * @param {string} credentialId 
      */
     static add(userId, credentialId) {
-        this.Sessions.set(userId, { credentialId, at: new Date() + 300_000 });
+        this.Sessions.set(userId, { credentialId, at: Date.now() + 300_000 });
         return true;
     };
 
