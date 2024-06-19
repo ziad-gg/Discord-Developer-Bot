@@ -13,7 +13,7 @@ function Execution(message) {
 
     const embed = new EmbedBuilder()
         .setColor('#0099ff')
-        .setTitle('Bot Uptime')
+        .setTitle('Bot Uptime ⌚')
         .setDescription(`🕒 **Uptime:** ${uptimeString}`)
         .setTimestamp();
 
