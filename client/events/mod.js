@@ -1,11 +1,10 @@
-const { Events, MessageComponentInteraction, codeBlock, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Events, MessageComponentInteraction, codeBlock, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { EventBuilder, CommandBuilder } = require('handler.djs');
 
 const database = require('@database');
 const manager = require('@/src/Manager.js');
 const session = require('@/src/Sessions.js');
 const utils = require('@/src/Utils.js');
-const { EmbedBuilder } = require('discord.js');
 
 EventBuilder.$N`${Events.InteractionCreate}`.$E(Execution).$L();
 
