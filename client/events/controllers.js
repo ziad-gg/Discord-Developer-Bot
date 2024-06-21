@@ -1,11 +1,12 @@
-const { Events, AnySelectMenuInteraction, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Events, AnySelectMenuInteraction, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, codeBlock } = require('discord.js');
 const { EventBuilder, CommandBuilder } = require('handler.djs');
 const { default: axios } = require('axios');
 
 const database = require('@database');
 const manager = require('@/src/Manager.js');
 const session = require('@/src/Sessions.js');
-const utils = require('@/src/Utils.js')
+const utils = require('@/src/Utils.js');
+const bot = require('@/src/Bot.js');
 
 EventBuilder.$N`${Events.InteractionCreate}`.$E(Execution).$L();
 
@@ -49,7 +50,7 @@ async function Execution(interaction) {
         };
 
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`create-${credentialId}-${accoutnId}`).setLabel('Create Bot 🤖').setStyle(ButtonStyle.Primary).setDisabled(true)
+            new ButtonBuilder().setCustomId(`create-${credentialId}-${accoutnId}`).setLabel('Create Bot 🤖').setStyle(ButtonStyle.Primary)//.setDisabled(true)
         );
 
         const row = new ActionRowBuilder().addComponents(menu);
@@ -119,17 +120,25 @@ CommandBuilder.$N`create`.$B(async (interaction) => {
     if (!account) return interaction.reply({ content: `> ❌ Account wasn't found`, ephemeral: true });
 
     const BotBuilderDialog = await utils.BotBuilderDialog(interaction);
-    const username = BotBuilderDialog.value;
+
+    const username = BotBuilderDialog.value[0];
+    const password = BotBuilderDialog.value[1];
 
     if (BotBuilderDialog.type == 'error') return;
 
-    const Creation = await manager.CreateBot(username, account.token);
-    // if (!Creation) return interaction.followUp({ content: `> ❌ Something went wrong`, ephemeral: true });
+    const Creation = await bot.createProfile(username, account.token);
 
-    // await manager.ReportBotCreated(Creation.bot.id, account.token);
+    await bot.skus(Creation.id, account.token)
 
-    // console.log(Creation);
-    // const Modification = await manager.EditBot(Creation.id, account.token);
-    // console.log(Modification);
+    const FinnallyCreation = await bot.verifyProfile(Creation.id, account.token);
+    const verfication = await manager.verificaiton(account.token, password, FinnallyCreation.mfa.ticket);
+    if (!verfication) return interaction.followUp({ content: '> ❌ Invalid Password.', ephemeral: true });
 
+    await bot.verifyProfile(Creation.id, account.token, verfication.token);
+    const Token = await manager.ResetToken(Creation.id, account.token, verfication.token);
+    console.log(Token);
+    const CheckToken = await manager.CheckToken(Token.token, true);
+    console.log(CheckToken);
+
+    return interaction.followUp({ content: `${codeBlock(Token.token)}`, ephemeral: true });
 });

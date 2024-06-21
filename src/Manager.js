@@ -139,28 +139,44 @@ class Manager {
      * @returns {Promise<DiscordBot>}
      */
     static async CreateBot(name, token) {
-        const icon = await getRandomAvatar();
+        // const icon = await getRandomAvatar();
 
         const payload = {
             url: 'https://discord.com/api/applications',
             method: 'post',
-            dats: {
+            data: {
                 name,
-                flags: 565248,
-                public_bot: true,
+                bot_public: true,
                 bot_require_code_grant: false,
-                icon: icon
+                flags: 565248,
             },
             headers: {
                 Authorization: `${token}`
             },
         };
 
-        const response = await axios(payload).catch(e => e.response);
+        const response = await axios(payload).catch(_ => _.response)
 
-        console.log(response.data.responses[0]);
+        const data = response.data;
+        console.log(data);
 
-        return response.data;
+        await axios({
+            url: `https://discord.com/api/applications/${data.id}/bot`,
+            method: "POST",
+            headers: {
+                Authorization: token,
+            },
+        }).catch(console.error);
+
+        const getToken = await axios({
+            url: `https://discord.com/api/applications/${data.id}/bot/reset`,
+            method: "POST",
+            headers: {
+                Authorization: token,
+            },
+        }).catch(_ => _.response)
+
+        console.log(getToken.data);
     };
 
     static async EditBot(id, token, data) {

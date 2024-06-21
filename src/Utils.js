@@ -54,8 +54,16 @@ module.exports.BotBuilderDialog = (interaction) => {
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
+        const passwordInput = new TextInputBuilder()
+            .setCustomId('password')
+            .setLabel("Account Password")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
         const firstActionRow = new ActionRowBuilder().addComponents(usernameInput);
-        modal.addComponents(firstActionRow);
+        const secoundActionRow = new ActionRowBuilder().addComponents(passwordInput);
+
+        modal.addComponents(firstActionRow, secoundActionRow);
 
         await interaction.showModal(modal);
         const filter = (i) => i.customId === key;
@@ -63,7 +71,8 @@ module.exports.BotBuilderDialog = (interaction) => {
         interaction.awaitModalSubmit({ filter, time: 60_000 }).then(async i => {
             await i.deferUpdate({ ephemeral: true });
             const username = i.fields.getTextInputValue('username');
-            resolve({ type: 'done', value: username });
+            const password = i.fields.getTextInputValue('password');
+            resolve({ type: 'done', value: [username, password] });
         }).catch(() => {
             resolve({ type: 'error' });
         });
